@@ -31,8 +31,6 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 
-
-
 extension UIApplication {
     
     var keyWindow: UIWindow? {
@@ -42,4 +40,5 @@ extension UIApplication {
     var hasTopNotch: Bool {
         return self.keyWindow?.safeAreaInsets.top ?? 0 > 20
     }
+    
 }
