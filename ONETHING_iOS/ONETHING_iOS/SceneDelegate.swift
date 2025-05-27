@@ -11,23 +11,29 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = (scene as? UIWindowScene) else { return }
-        self.window = UIWindow(windowScene: windowScene).then {
-            $0.overrideUserInterfaceStyle = .light
+        guard let windowScene = (scene as? UIWindowScene) else {
+            return
         }
-
-        self.window?.rootViewController = self.makeSplashViewController()
+        
+        let window = UIWindow(windowScene: windowScene)
+        window.overrideUserInterfaceStyle = .light
+        window.rootViewController = self.makeSplashViewController()
+        
+        self.window = window
         self.window?.makeKeyAndVisible()
     }
     
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        guard let url = URLContexts.first?.url else { return }
+        guard let url = URLContexts.first?.url else {
+            return
+        }
         SocialManager.sharedInstance.handleSocialURLScheme(url)
     }
     
     private func makeSplashViewController() -> SplashViewController? {
-        guard let splashViewController = SplashViewController.instantiateViewController(from: .intro)
-        else { return nil }
+        guard let splashViewController = SplashViewController.instantiateViewController(from: .intro) else {
+            return nil
+        }
         
         splashViewController.delegate = self
         return splashViewController
@@ -36,7 +42,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 extension SceneDelegate: SplashViewControllerDelegate {
     func splashViewController(_ viewController: SplashViewController, didOccur event: SplashViewController.Event) {
-        guard event == .splashAnimationDidFinish else { return }
+        guard event == .splashAnimationDidFinish else {
+            return
+        }
         
         self.changeRootToMainTabBarController()
     }

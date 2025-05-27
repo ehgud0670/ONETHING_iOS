@@ -8,19 +8,8 @@
 import Lottie
 import UIKit
 
-final class MainTabBarController: UITabBarController {
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        self.setupTabBar()
-        self.setupViewControllers()
-        self.setupUserInformIfNeeded()
-        
-        DispatchQueue.main.async {
-            self.decideStartController()
-        }
-    }
+// MARK: Internal Methods
+extension MainTabBarController {
     
     func processLogout() {
         guard let loginViewController = LoginViewController.instantiateViewController(from: .intro) else { return }
@@ -37,31 +26,31 @@ final class MainTabBarController: UITabBarController {
     
     func broadCastRequiredReload() {
         self.setupUserInformIfNeeded()
+        
         self.viewControllers?.forEach { viewController in
             guard let navigationController = viewController as? UINavigationController else { return }
-            guard let topController = navigationController.topViewController           else { return }
-            guard let baseController = topController as? BaseViewController            else { return }
-            guard baseController.isViewLoaded == true                                  else { return }
+            guard let topController = navigationController.topViewController else { return }
+            guard let baseController = topController as? BaseViewController else { return }
+            guard baseController.isViewLoaded == true else { return }
+            
             baseController.reloadContentsIfRequired()
         }
     }
-    
-    private func moveToRoot() {
-        guard let viewControllers = self.viewControllers else { return }
-        viewControllers.forEach { viewController in
-            guard let navigationController = viewController as? UINavigationController else { return }
-            navigationController.popToRootViewController(animated: false)
-        }
-    }
-    
-    private func clearChildControllers() {
-        guard let viewControllers = self.viewControllers else { return }
-        viewControllers.forEach { viewController in
-            guard let navigationController = viewController as? UINavigationController else { return }
-            guard let topController = navigationController.topViewController           else { return }
-            guard let baseController = topController as? BaseViewController            else { return }
-            guard baseController.isViewLoaded == true                                  else { return }
-            baseController.clearContents()
+
+}
+
+final class MainTabBarController: UITabBarController {
+    private let viewModel = MainTabbarViewModel()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.setupTabBar()
+        self.setupViewControllers()
+        self.setupUserInformIfNeeded()
+        
+        DispatchQueue.main.async {
+            self.decideStartController()
         }
     }
     
@@ -74,6 +63,12 @@ final class MainTabBarController: UITabBarController {
         
         self.tabBar.layer.applyShadow(x: 0, y: 0, blur: 30.0)
         self.tabBar.tintColor = .black_100
+    }
+    
+    private func setupViewControllers() {
+        self.viewControllers = Child.allCases.map {
+            $0.createController()
+        }
     }
     
     private func setupTabBarBackgroundForiOS14Below() {
@@ -92,18 +87,79 @@ final class MainTabBarController: UITabBarController {
         self.tabBar.scrollEdgeAppearance = appearance
     }
     
-    private func setupViewControllers() {
-        self.viewControllers = Child.allCases.map {
-            $0.createController()
-        }
-    }
-    
     private func setupUserInformIfNeeded() {
         guard OnethingUserManager.sharedInstance.hasAccessToken == true else { return }
         self.viewModel.requestUserInformation()
     }
     
-    private let viewModel = MainTabbarViewModel()
+    private func decideStartController() {
+        if OnethingUserManager.sharedInstance.hasAccessToken == false {
+            self.presentLoginViewController()
+            return
+        }
+        
+        OnethingUserManager.sharedInstance.requestAccount(completion: { accountModel in
+            guard accountModel.doneHabitSetting == false else {
+                return
+            }
+            
+            self.presentGoalSettingVCOrProfileSettingVC(with: accountModel)
+        })
+    }
+    
+    private func presentLoginViewController() {
+        guard let loginViewController = LoginViewController.instantiateViewController(from: .intro) else {
+            return
+        }
+        
+        guard let navigationController = UIViewController.navigationController(loginViewController) else {
+            return
+        }
+        
+        self.present(navigationController, animated: false)
+    }
+    
+    private func presentGoalSettingVCOrProfileSettingVC(with accountModel: OnethingAccountModel) {
+        let goalSettingVC = GoalSettingFirstViewController.instantiateViewController(from: .goalSetting)
+        let navigationController = UIViewController.navigationController(goalSettingVC)
+        navigationController?.setupEnableSwipeBackMotion()
+        
+        guard let navigationController else { return }
+        
+        // MARK: 습관 설정 화면을 present 하되, NickName 이 없는 경우 프로필 설정화면으로 이동합니다.
+        self.present(navigationController, animated: false, completion: {
+            
+            if accountModel.account?.nickname == nil {
+                guard let profileSettingVC = ProfileSettingViewController.instantiateViewController(from: .intro) else {
+                    return
+                }
+                
+                profileSettingVC.modalPresentationStyle = .fullScreen
+                navigationController.present(profileSettingVC, animated: false)
+            }
+            
+        })
+    }
+
+    private func moveToRoot() {
+        guard let viewControllers = self.viewControllers else { return }
+        viewControllers.forEach { viewController in
+            guard let navigationController = viewController as? UINavigationController else { return }
+            navigationController.popToRootViewController(animated: false)
+        }
+    }
+    
+    private func clearChildControllers() {
+        guard let viewControllers = self.viewControllers else { return }
+        viewControllers.forEach { viewController in
+            guard let navigationController = viewController as? UINavigationController else { return }
+            guard let topController = navigationController.topViewController           else { return }
+            guard let baseController = topController as? BaseViewController            else { return }
+            guard baseController.isViewLoaded == true                                  else { return }
+            baseController.clearContents()
+        }
+    }
+
 }
 
 extension MainTabBarController {
@@ -113,7 +169,7 @@ extension MainTabBarController {
         case myhabit
         case mypage
         
-        var tabbarImage: UIImage? {
+        private var tabbarImage: UIImage? {
             switch self {
             case .home:     return UIImage(named: "home_inactive")
             case .myhabit:  return UIImage(named: "history_inactive")
@@ -121,7 +177,7 @@ extension MainTabBarController {
             }
         }
         
-        func createController() -> UIViewController {
+        fileprivate func createController() -> UIViewController {
             var childController: UIViewController
             switch self {
             case .home:
